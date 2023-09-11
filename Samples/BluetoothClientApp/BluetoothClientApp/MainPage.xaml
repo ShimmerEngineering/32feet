@@ -6,9 +6,38 @@
 
     <StackLayout>
         <!-- Place new controls here -->
-        <Label Text="Welcome to Xamarin.Forms!" 
-           HorizontalOptions="Center"
-           VerticalOptions="CenterAndExpand" />
+        <Label 
+       Text="Shimmer 3 BLE Example"
+       FontSize="18"
+       VerticalOptions="Center"
+       HorizontalOptions="Center" />
+        <Label x:Name="labelState"
+               Text="Shimmer State"
+               FontSize="18"
+               VerticalOptions="Center"
+               HorizontalOptions="Center" />
+        <Button Text="Connect"
+                VerticalOptions="Center"
+                HorizontalOptions="Center"
+                Clicked="OnButtonConnectClicked" />
+        <Button Text="Disconnect"
+                VerticalOptions="Center"
+                HorizontalOptions="Center"
+                Clicked="OnButtonDisconnectClicked" />
+        <Button Text="StartStreaming"
+                VerticalOptions="Center"
+                HorizontalOptions="Center"
+                Clicked="OnButtonStartStreamingClicked" />
+        <Button Text="StopStreaming"
+                VerticalOptions="Center"
+                HorizontalOptions="Center"
+                Clicked="OnButtonStopStreamingClicked" />
+        <Label x:Name="labelData"
+               Text="Shimmer Data"
+               FontSize="18"
+               VerticalOptions="Center"
+               HorizontalOptions="Center" />
+
     </StackLayout>
 
 </ContentPage>

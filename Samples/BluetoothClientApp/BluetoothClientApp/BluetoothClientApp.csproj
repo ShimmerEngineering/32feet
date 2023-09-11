@@ -15,6 +15,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Shimmer-C-API\Shimmer32FeetAPI\Shimmer32FeetAPI.csproj" />
+    <ProjectReference Include="..\..\..\..\Shimmer-C-API\ShimmerAPI\ShimmerAPI\ShimmerAPI.csproj" />
     <ProjectReference Include="..\..\..\InTheHand.BluetoothLE\InTheHand.BluetoothLE.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="BluetoothPermissionsPage.xaml">
+      <Generator>MSBuild:UpdateDesignTimeXaml</Generator>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

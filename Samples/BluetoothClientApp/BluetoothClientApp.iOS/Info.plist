@@ -20,8 +20,6 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>MinimumOSVersion</key>
-	<string>12.0</string>
 	<key>CFBundleDisplayName</key>
 	<string>BluetoothClientApp</string>
 	<key>CFBundleVersion</key>
@@ -38,5 +36,16 @@
 	<string>This app requires Bluetooth to demonstrate the Bluetooth LE APIs</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.inthehand.BluetoothClientApp</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>external-accessory</string>
+	</array>
+	<key>CustomProperty</key>
+	<string></string>
+	<key>MinimumOSVersion</key>
+	<string>10.0</string>
 </dict>
 </plist>
