@@ -2,18 +2,19 @@
 //
 // InTheHand.Net.Bluetooth.BluetoothRadio (Win32)
 // 
-// Copyright (c) 2003-2022 In The Hand Ltd, All rights reserved.
+// Copyright (c) 2003-2023 In The Hand Ltd, All rights reserved.
 // This source code is licensed under the MIT License
 
 using InTheHand.Net.Bluetooth.Win32;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace InTheHand.Net.Bluetooth
 {
-    partial class BluetoothRadio
+    internal sealed class Win32BluetoothRadio : IBluetoothRadio
     {
-        private static BluetoothRadio GetDefault()
+        internal static IBluetoothRadio GetDefault()
         {
             BLUETOOTH_FIND_RADIO_PARAMS p = BLUETOOTH_FIND_RADIO_PARAMS.Create();
             BLUETOOTH_RADIO_INFO info = BLUETOOTH_RADIO_INFO.Create();
@@ -22,6 +23,10 @@ namespace InTheHand.Net.Bluetooth
             if (hRadio != IntPtr.Zero)
             {
                 int result = NativeMethods.BluetoothGetRadioInfo(hRadio, ref info);
+                if(result != 0)
+                {
+                    throw new PlatformNotSupportedException();
+                }
             }
 
             if (findHandle != IntPtr.Zero)
@@ -31,30 +36,24 @@ namespace InTheHand.Net.Bluetooth
 
             if (hRadio != IntPtr.Zero)
             {
-                return new BluetoothRadio(info, hRadio);
+                return new Win32BluetoothRadio(info, hRadio);
             }
 
             return null;
         }
 
-        private BLUETOOTH_RADIO_INFO _radio;
+        private readonly BLUETOOTH_RADIO_INFO _radio;
         private IntPtr _handle;
 
-        private BluetoothRadio(BLUETOOTH_RADIO_INFO info, IntPtr handle)
+        private Win32BluetoothRadio(BLUETOOTH_RADIO_INFO info, IntPtr handle)
         {
             _radio = info;
             _handle = handle;
         }
 
-        private string GetName()
-        {
-            return _radio.szName;
-        }
+        public string Name { get => _radio.szName; }
 
-        private BluetoothAddress GetLocalAddress()
-        {
-            return _radio.address;
-        }
+        public BluetoothAddress LocalAddress { get => _radio.address; }
 
         /*private void ReadLocalRadioInfo()
         {
@@ -63,64 +62,84 @@ namespace InTheHand.Net.Bluetooth
             bool result = NativeMethods.DeviceIoControl(_handle, IOCTL_BTH.GET_LOCAL_INFO, IntPtr.Zero, 0, ref buffer, Marshal.SizeOf(buffer), out returned, IntPtr.Zero);
         }*/
 
-        private RadioMode GetMode()
+        public RadioMode Mode
         {
-            // if radio has been turned off enumeration will no longer return a radio handle
-            if (GetDefault() == null)
+            get
+            {
+                // if radio has been turned off enumeration will no longer return a radio handle
+                if (GetDefault() == null)
+                    return RadioMode.PowerOff;
+
+                if (NativeMethods.BluetoothIsDiscoverable(_handle))
+                {
+                    return RadioMode.Discoverable;
+                }
+
+                if (NativeMethods.BluetoothIsConnectable(_handle))
+                {
+                    return RadioMode.Connectable;
+                }
+
                 return RadioMode.PowerOff;
-
-            if (NativeMethods.BluetoothIsDiscoverable(_handle))
-            {
-                return RadioMode.Discoverable;
             }
-
-            if (NativeMethods.BluetoothIsConnectable(_handle))
+            set
             {
-                return RadioMode.Connectable;
-            }
+                switch (value)
+                {
+                    case RadioMode.Discoverable:
+                        if (Mode == RadioMode.PowerOff)
+                        {
+                            NativeMethods.BluetoothEnableIncomingConnections(_handle, true);
+                        }
 
-            return RadioMode.PowerOff;
+                        NativeMethods.BluetoothEnableDiscovery(_handle, true);
+                        break;
+
+                    case RadioMode.Connectable:
+                        if (Mode == RadioMode.Discoverable)
+                        {
+                            NativeMethods.BluetoothEnableDiscovery(_handle, false);
+                        }
+                        else
+                        {
+                            NativeMethods.BluetoothEnableIncomingConnections(_handle, true);
+                        }
+                        break;
+
+                    case RadioMode.PowerOff:
+                        if (Mode == RadioMode.Discoverable)
+                        {
+                            NativeMethods.BluetoothEnableDiscovery(_handle, false);
+                        }
+
+                        NativeMethods.BluetoothEnableIncomingConnections(_handle, false);
+                        break;
+                }
+            }
         }
 
-        private void SetMode(RadioMode value)
-        {
-            switch (value)
+        public BluetoothVersion LmpVersion 
+        { 
+            get 
             {
-                case RadioMode.Discoverable:
-                    if (Mode == RadioMode.PowerOff)
-                    {
-                        NativeMethods.BluetoothEnableIncomingConnections(_handle, true);
-                    }
+                // the Win32 API doesn't recognise versions beyond 2.1
+                if (NativeMethods.BluetoothIsVersionAvailable(2, 1))
+                    return BluetoothVersion.Version21;
+                if (NativeMethods.BluetoothIsVersionAvailable(2, 0))
+                    return BluetoothVersion.Version20;
+                if (NativeMethods.BluetoothIsVersionAvailable(1, 2))
+                    return BluetoothVersion.Version12;
+                if (NativeMethods.BluetoothIsVersionAvailable(1, 1))
+                    return BluetoothVersion.Version11;
 
-                    NativeMethods.BluetoothEnableDiscovery(_handle, true);
-                    break;
-
-                case RadioMode.Connectable:
-                    if (Mode == RadioMode.Discoverable)
-                    {
-                        NativeMethods.BluetoothEnableDiscovery(_handle, false);
-                    }
-                    else
-                    {
-                        NativeMethods.BluetoothEnableIncomingConnections(_handle, true);
-                    }
-                    break;
-
-                case RadioMode.PowerOff:
-                    if (Mode == RadioMode.Discoverable)
-                    {
-                        NativeMethods.BluetoothEnableDiscovery(_handle, false);
-                    }
-
-                    NativeMethods.BluetoothEnableIncomingConnections(_handle, false);
-                    break;
+                return BluetoothVersion.Version10;
             }
         }
 
         /// <summary>
         /// Manufacturer's revision number of the LMP implementation.
         /// </summary>
-        public int LmpSubversion
+        public ushort LmpSubversion
         {
             get
             {
@@ -131,13 +150,7 @@ namespace InTheHand.Net.Bluetooth
         /// <summary>
         /// Returns the manufacturer of the BluetoothRadio device.
         /// </summary>
-        public ushort Manufacturer
-        {
-            get
-            {
-                return _radio.manufacturer;
-            }
-        }
+        public CompanyIdentifier Manufacturer {  get=> (CompanyIdentifier)_radio.manufacturer; }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -160,6 +173,10 @@ namespace InTheHand.Net.Bluetooth
             }
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+        }
         #endregion
     }
 }

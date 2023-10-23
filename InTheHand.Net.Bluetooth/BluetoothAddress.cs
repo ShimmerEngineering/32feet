@@ -2,7 +2,7 @@
 //
 // InTheHand.Net.BluetoothAddress
 // 
-// Copyright (c) 2003-2022 In The Hand Ltd, All rights reserved.
+// Copyright (c) 2003-2023 In The Hand Ltd, All rights reserved.
 // This source code is licensed under the MIT License
 
 using System;
@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
+using System.Text;
 
 namespace InTheHand.Net
 {
@@ -208,7 +209,7 @@ namespace InTheHand.Net
 
             byte[] data = ToByteArray();
 
-            System.Text.StringBuilder result = new System.Text.StringBuilder(18);
+            var result = new StringBuilder(18);
 
             if (format == "8")
             {

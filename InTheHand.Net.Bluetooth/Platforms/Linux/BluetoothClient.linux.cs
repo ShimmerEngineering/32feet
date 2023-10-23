@@ -9,6 +9,7 @@ using InTheHand.Net.Bluetooth;
 using Linux.Bluetooth;
 using Linux.Bluetooth.Extensions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -19,11 +20,11 @@ using System.Xml;
 
 namespace InTheHand.Net.Sockets
 {
-    partial class BluetoothClient
+    internal sealed class LinuxBluetoothClient : IBluetoothClient, IDisposable
     {
         private LinuxSocket _socket;
 
-        private void PlatformInitialize()
+        public LinuxBluetoothClient()
         {
             if (Environment.OSVersion.Platform != PlatformID.Unix)
                 throw new PlatformNotSupportedException("Linux library used on non-Linux OS.");
@@ -31,48 +32,61 @@ namespace InTheHand.Net.Sockets
             _socket = new LinuxSocket();
         }
 
-        internal BluetoothClient(LinuxSocket s)
+        internal LinuxBluetoothClient(LinuxSocket s)
         {
             _socket = s;
         }
 
-        IEnumerable<BluetoothDeviceInfo> GetPairedDevices()
+        public IEnumerable<BluetoothDeviceInfo> PairedDevices
         {
-            var t = Task.Run<IEnumerable<BluetoothDeviceInfo>>(async () => 
+            get
             {
-                List<BluetoothDeviceInfo> pairedDevices = new List<BluetoothDeviceInfo>();
-                var devices = await BluetoothRadio.Default.Adapter.GetDevicesAsync();
-                foreach (var device in devices)
+                var t = Task.Run<IEnumerable<BluetoothDeviceInfo>>(async () =>
                 {
-                    BluetoothDeviceInfo bdi = new BluetoothDeviceInfo(device);
-                    await bdi.Init();
-                    pairedDevices.Add(bdi);
-                }
-                return pairedDevices.AsReadOnly();
-            });
-            t.Wait();
-            return t.Result;
+                    List<BluetoothDeviceInfo> pairedDevices = new List<BluetoothDeviceInfo>();
+                    var devices = await ((Adapter)BluetoothRadio.Default).GetDevicesAsync();
+                    foreach (var device in devices)
+                    {
+                        var bdi = new LinuxBluetoothDeviceInfo(device);
+                        await bdi.Init();
+                        pairedDevices.Add(bdi);
+                    }
+                    return pairedDevices.AsReadOnly();
+                });
+                t.Wait();
+                return t.Result;
+            }
         }
 
-        IReadOnlyCollection<BluetoothDeviceInfo> PlatformDiscoverDevices(int maxDevices)
+        public IReadOnlyCollection<BluetoothDeviceInfo> DiscoverDevices(int maxDevices)
         {
-            List<BluetoothDeviceInfo> devices = new List<BluetoothDeviceInfo>();
+            List<BluetoothDeviceInfo> devices = new();
+
+            var source = new CancellationTokenSource();
+            var token = source.Token;
+            var discoveredDevices = Task.Run(() => DiscoverDevicesAsync(token)).Result;
+            foreach(var dev in discoveredDevices.ToBlockingEnumerable())
+            {
+                devices.Add(dev);
+            }
 
             return devices.AsReadOnly();
         }
 
-        async IAsyncEnumerable<BluetoothDeviceInfo> PlatformDiscoverDevicesAsync([EnumeratorCancellation]CancellationToken cancellationToken)
+
+        public async IAsyncEnumerable<BluetoothDeviceInfo> DiscoverDevicesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             TaskCompletionSource<bool> result = new TaskCompletionSource<bool>();
             List<BluetoothDeviceInfo> devices = new List<BluetoothDeviceInfo>();
-            BluetoothDeviceInfo device = null;
+            LinuxBluetoothDeviceInfo device = null;
             var waitable = new AutoResetEvent(false);
+            var adapter = (Adapter)BluetoothRadio.Default;
 
             async Task handler(Adapter sender, DeviceFoundEventArgs eventArgs)
             {
                 if (!eventArgs.IsStateChange)
                 {
-                    if (!devices.Contains((BluetoothDeviceInfo)eventArgs.Device))
+                    if (!devices.Contains((LinuxBluetoothDeviceInfo)eventArgs.Device))
                     {
                         device = eventArgs.Device;
                         await device.Init();
@@ -81,28 +95,28 @@ namespace InTheHand.Net.Sockets
                 }
             }
 
-            BluetoothRadio.Default.Adapter.DeviceFound += handler;
+            adapter.DeviceFound += handler;
 
             var t = Task.Run(async () =>
             {
-                await BluetoothRadio.Default.Adapter.StartDiscoveryAsync();
+                await adapter.StartDiscoveryAsync();
                 await Task.Delay(5000);
-                await BluetoothRadio.Default.Adapter.StopDiscoveryAsync();
+                await adapter.StopDiscoveryAsync();
                 waitable.Set();
                 result.TrySetResult(true);
             }, cancellationToken);
 
-            while(!t.IsCompleted)
+            while (!t.IsCompleted)
             {
                 waitable.WaitOne();
                 yield return device;
             }
 
-            BluetoothRadio.Default.Adapter.DeviceFound -= handler;
+            adapter.DeviceFound -= handler;
             yield break;
         }
 
-        void PlatformConnect(BluetoothAddress address, Guid service)
+        public void Connect(BluetoothAddress address, Guid service)
         {
             var ep = new BluetoothEndPoint(address, service);
 
@@ -121,65 +135,46 @@ namespace InTheHand.Net.Sockets
             _socket.Connect(remoteEP);
         }
 
-        async Task PlatformConnectAsync(BluetoothAddress address, Guid service)
+        public async Task ConnectAsync(BluetoothAddress address, Guid service)
         {
-            PlatformConnect(address, service);
+            Connect(address, service);
         }
 
-        void PlatformClose()
+        public void Close()
         {
             if (_socket != null && _socket.Connected)
                 _socket.Close();
         }
 
-        bool GetAuthenticate()
+        bool IBluetoothClient.Authenticate { get => false; set { } }
+
+        Socket IBluetoothClient.Client { get => _socket; }
+
+        public bool Connected
         {
-            return false;
+            get
+            {
+                if (_socket == null)
+                    return false;
+
+                return _socket.Connected;
+            }
         }
 
-        void SetAuthenticate(bool value)
+        bool IBluetoothClient.Encrypt { get=> false; set { } }
+
+        TimeSpan IBluetoothClient.InquiryLength { get => TimeSpan.Zero; set { } }
+
+        string IBluetoothClient.RemoteMachineName
         {
+            get
+            {
+                var remote = _socket.RemoteEndPoint as BluetoothEndPoint;
+                return new BluetoothAddress(remote.Address).ToString();
+            }
         }
 
-        Socket GetClient()
-        {
-            return _socket;
-        }
-
-        bool GetConnected()
-        {
-            if (_socket == null)
-                return false;
-
-            return _socket.Connected;
-        }
-
-        bool GetEncrypt()
-        {
-            return false;
-        }
-
-        void SetEncrypt(bool value)
-        {
-        }
-
-        TimeSpan GetInquiryLength()
-        {
-            return TimeSpan.Zero;
-        }
-
-        void SetInquiryLength(TimeSpan length)
-        {
-
-        }
-
-        public string GetRemoteMachineName()
-        {
-            var remote = _socket.RemoteEndPoint as BluetoothEndPoint;
-            return new BluetoothAddress(remote.Address).ToString();
-        }
-
-        NetworkStream PlatformGetStream()
+        public NetworkStream GetStream()
         {
             if (Connected)
             {
@@ -205,7 +200,36 @@ namespace InTheHand.Net.Sockets
         }
 
         // This code added to correctly implement the disposable pattern.
-        
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+        }
         #endregion
     }
+
+    #if NET6_0
+    // this is properly supported in .NET 7.0 - helper method added for 6.0 only
+    internal static class AsyncEnumerableHelper
+    {
+        public static IEnumerable<T> ToBlockingEnumerable<T>(this IAsyncEnumerable<T> asyncEnumerable)
+        {
+            var list = new BlockingCollection<T>();
+
+            async Task AsyncIterate()
+            {
+                await foreach (var item in asyncEnumerable)
+                {
+                    list.Add(item);
+                }
+
+                list.CompleteAdding();
+            }
+
+            _ = AsyncIterate();
+
+            return list.GetConsumingEnumerable();
+        }
+    }
+    #endif
 }

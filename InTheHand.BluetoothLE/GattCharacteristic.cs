@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="GattCharacteristic.cs" company="In The Hand Ltd">
-//   Copyright (c) 2018-20 In The Hand Ltd, All rights reserved.
+//   Copyright (c) 2018-23 In The Hand Ltd, All rights reserved.
 //   This source code is licensed under the MIT License - see License.txt
 // </copyright>
 //-----------------------------------------------------------------------
@@ -56,9 +56,9 @@ namespace InTheHand.Bluetooth
         }
 
         /// <summary>
-        /// 
+        /// Performs a Characteristic Value read from the Bluetooth LE device.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The object required to manage the asynchronous operation, which, upon completion, returns the data read from the device.</returns>
         public Task<byte[]> ReadValueAsync()
         {
             //if (!Service.Device.Gatt.Connected)
@@ -68,34 +68,25 @@ namespace InTheHand.Bluetooth
         }
 
         /// <summary>
-        /// Performs a Characteristic Value write to a Bluetooth LE device.
+        /// Performs a Characteristic Value write to the Bluetooth LE device.
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">The data to be written to the Bluetooth LE device.</param>
         /// <returns></returns>
         public Task WriteValueWithResponseAsync(byte[] value)
         {
-            ThrowOnInvalidValue(value);
+            Bluetooth.ThrowOnInvalidAttributeValue(value);
             return PlatformWriteValue(value, true);
         }
 
         /// <summary>
-        /// 
+        /// Performs a Characteristic Value write to the Bluetooth LE device.
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">The data to be written to the Bluetooth LE device.</param>
         /// <returns></returns>
         public Task WriteValueWithoutResponseAsync(byte[] value)
         {
-            ThrowOnInvalidValue(value);
+            Bluetooth.ThrowOnInvalidAttributeValue(value);
             return PlatformWriteValue(value, false);
-        }
-
-        private void ThrowOnInvalidValue(byte[] value)
-        {
-            if (value is null)
-                throw new ArgumentNullException("value");
-
-            if (value.Length > 512)
-                throw new ArgumentOutOfRangeException("value", "Attribute value cannot be longer than 512 bytes");
         }
 
         public Task<GattDescriptor> GetDescriptorAsync(BluetoothUuid descriptor)
@@ -158,15 +149,5 @@ namespace InTheHand.Bluetooth
         {
             return PlatformStopNotifications();
         }
-    }
-
-    public sealed class GattCharacteristicValueChangedEventArgs : EventArgs
-    {
-        internal GattCharacteristicValueChangedEventArgs(byte[] newValue)
-        {
-            Value = newValue;
-        }
-
-        public byte[] Value { get; private set; }
     }
 }

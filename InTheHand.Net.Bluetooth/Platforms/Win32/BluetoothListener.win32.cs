@@ -2,7 +2,7 @@
 //
 // InTheHand.Net.Sockets.BluetoothListener (Win32)
 // 
-// Copyright (c) 2018-2020 In The Hand Ltd, All rights reserved.
+// Copyright (c) 2018-2023 In The Hand Ltd, All rights reserved.
 // This source code is licensed under the MIT License
 
 using InTheHand.Net.Bluetooth;
@@ -16,18 +16,25 @@ using System.Threading.Tasks;
 
 namespace InTheHand.Net.Sockets
 {
-    partial class BluetoothListener
+    internal sealed class Win32BluetoothListener : IBluetoothListener
     {
         private BluetoothEndPoint endPoint;
         private Socket socket;
         private IntPtr handle = IntPtr.Zero;
 
-        void PlatformStart()
+        public bool Active { get; private set; }
+
+        public ServiceClass ServiceClass { get; set; }
+        public string ServiceName { get; set; }
+        public ServiceRecord ServiceRecord { get; set; }
+        public Guid ServiceUuid { get; set; }
+
+        public void Start()
         {
             if (handle != IntPtr.Zero)
                 throw new InvalidOperationException();
 
-            endPoint = new BluetoothEndPoint(BluetoothAddress.None, serviceUuid, NativeMethods.BTH_PORT_ANY);
+            endPoint = new BluetoothEndPoint(BluetoothAddress.None, ServiceUuid, NativeMethods.BTH_PORT_ANY);
 
             if (NativeMethods.IsRunningOnMono())
             {
@@ -40,7 +47,7 @@ namespace InTheHand.Net.Sockets
             }
             else
             {
-                socket = new Socket(BluetoothClient.AddressFamilyBluetooth, SocketType.Stream, BluetoothProtocolType.RFComm);
+                socket = new Socket(Win32BluetoothClient.AddressFamilyBluetooth, SocketType.Stream, BluetoothProtocolType.RFComm);
                 socket.Bind(endPoint);
                 Debug.WriteLine(socket.IsBound);
                 socket.Listen(1);
@@ -86,7 +93,7 @@ namespace InTheHand.Net.Sockets
             if (ServiceRecord == null)
             {
                 ServiceRecordBuilder builder = new ServiceRecordBuilder();
-                builder.AddServiceClass(serviceUuid);
+                builder.AddServiceClass(ServiceUuid);
                 builder.ProtocolType = BluetoothProtocolDescriptorType.Rfcomm;
 
                 if (!string.IsNullOrEmpty(ServiceName))
@@ -130,9 +137,11 @@ namespace InTheHand.Net.Sockets
                 Marshal.FreeHGlobal(blob.blobData);
                 blobh.Free();
             }
+
+            Active = true;
         }
 
-        void PlatformStop()
+        public void Stop()
         {
             Debug.WriteLine("BluetoothListener Stop");
 
@@ -192,9 +201,11 @@ namespace InTheHand.Net.Sockets
             }
 
             socket = null;
+
+            Active = false;
         }
 
-        bool PlatformPending()
+        public bool Pending()
         {
             if (NativeMethods.IsRunningOnMono())
             {
@@ -206,21 +217,21 @@ namespace InTheHand.Net.Sockets
             }
         }
 
-        BluetoothClient PlatformAcceptBluetoothClient()
+        public Socket AcceptSocket()
         {
-            Socket s;
-
             if (NativeMethods.IsRunningOnMono())
             {
-                s = ((Win32Socket)socket).Accept();
+                return ((Win32Socket)socket).Accept();
             }
             else
             {
-                s = socket.Accept();
+                return socket.Accept();
             }
-
-            return new BluetoothClient(s);
         }
 
+        public BluetoothClient AcceptBluetoothClient()
+        {
+            return new BluetoothClient(new Win32BluetoothClient(AcceptSocket()));
+        }
     }
 }

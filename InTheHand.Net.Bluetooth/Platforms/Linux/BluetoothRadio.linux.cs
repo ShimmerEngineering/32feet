@@ -15,15 +15,28 @@ namespace InTheHand.Net.Bluetooth
 {
     partial class BluetoothRadio
     {
-
-        private static BluetoothRadio GetDefault()
+        public static implicit operator Adapter(BluetoothRadio radio)
         {
-            BluetoothRadio radio = AsyncHelpers.RunSync(async () =>
+            return ((LinuxBluetoothRadio)radio.Radio).Adapter;
+        }
+
+        public static implicit operator BluetoothRadio(Adapter adapter)
+        {
+            return new BluetoothRadio((LinuxBluetoothRadio)adapter);
+        }
+    }
+
+    internal sealed class LinuxBluetoothRadio : IBluetoothRadio
+    {
+
+        internal static IBluetoothRadio GetDefault()
+        {
+            IBluetoothRadio radio = AsyncHelpers.RunSync(async () =>
             {
                 Adapter adapter = (await BlueZManager.GetAdaptersAsync()).FirstOrDefault();
                 if (adapter != null)
                 {
-                    var radio = (BluetoothRadio)adapter;
+                    var radio = (LinuxBluetoothRadio)adapter;
                     await radio.Init();
                     return radio;
                 }
@@ -34,29 +47,22 @@ namespace InTheHand.Net.Bluetooth
             return radio;
         }
  
-        public static implicit operator BluetoothRadio(Adapter adapter)
+        public static implicit operator LinuxBluetoothRadio(Adapter adapter)
         {
-            return new BluetoothRadio(adapter);
+            return new LinuxBluetoothRadio(adapter);
         }
 
-        public static implicit operator Adapter(BluetoothRadio radio)
+        public static implicit operator Adapter(LinuxBluetoothRadio radio)
         {
             return radio._adapter;
         }
 
-        private Adapter _adapter;
-        internal Adapter Adapter
-        {
-            get
-            {
-                return _adapter;
-            }
-        }
+        private readonly Adapter _adapter;
+        internal Adapter Adapter { get => _adapter; }
 
-        private BluetoothRadio(Adapter adapter)
+        private LinuxBluetoothRadio(Adapter adapter)
         {
             ArgumentNullException.ThrowIfNull(adapter, nameof(adapter));
-
             _adapter = adapter;
         }
 
@@ -64,52 +70,71 @@ namespace InTheHand.Net.Bluetooth
         {
             var props = await _adapter.GetAllAsync();
             _name = props.Name;
+            Guid gattService = new(0x00001800, 0x0000, 0x1000, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB);
+
+            foreach (string uuid in props.UUIDs)
+            {
+                Console.WriteLine(uuid);
+
+                if(Guid.TryParse(uuid, out Guid guid))
+                {
+                    if(guid == gattService)
+                    {
+                        _isLowEnergy = true;
+                        break;
+                    }
+                }
+            }
+
             _address = BluetoothAddress.Parse(props.Address);
         }
 
         private string _name;
-        string GetName()
-        {
-            return _name;
-        }
+        public string Name {  get =>  _name; }
 
         private BluetoothAddress _address;
-        BluetoothAddress GetLocalAddress()
-        {
-            return _address;
-        }
+        public BluetoothAddress LocalAddress {  get =>  _address; }
 
-        RadioMode GetMode()
+        public RadioMode Mode
         {
-            if(AsyncHelpers.RunSync(() => { return _adapter.GetPoweredAsync(); }))
+            get
             {
-                if (AsyncHelpers.RunSync(() => { return _adapter.GetDiscoverableAsync(); }))
+                if (AsyncHelpers.RunSync(() => { return _adapter.GetPoweredAsync(); }))
                 {
-                    return RadioMode.Discoverable;
+                    if (AsyncHelpers.RunSync(() => { return _adapter.GetDiscoverableAsync(); }))
+                    {
+                        return RadioMode.Discoverable;
+                    }
+
+                    return RadioMode.Connectable;
                 }
 
-                return RadioMode.Connectable;
+                return RadioMode.PowerOff;
             }
-            return RadioMode.PowerOff;
+            set
+            {
+                switch (value)
+                {
+                    case RadioMode.Discoverable:
+                        AsyncHelpers.RunSync(() => { return _adapter.SetPoweredAsync(true); });
+                        AsyncHelpers.RunSync(() => { return _adapter.SetDiscoverableAsync(true); });
+                        break;
+                    case RadioMode.Connectable:
+                        AsyncHelpers.RunSync(() => { return _adapter.SetPoweredAsync(true); });
+                        AsyncHelpers.RunSync(() => { return _adapter.SetDiscoverableAsync(false); });
+                        break;
+                    case RadioMode.PowerOff:
+                        AsyncHelpers.RunSync(() => { return _adapter.SetPoweredAsync(false); });
+                        break;
+                }
+            }
         }
 
-        void SetMode(RadioMode value)
-        {
-            switch (value)
-            {
-                case RadioMode.Discoverable:
-                    AsyncHelpers.RunSync(() => { return _adapter.SetPoweredAsync(true); });
-                    AsyncHelpers.RunSync(() => { return _adapter.SetDiscoverableAsync(true); });
-                    break;
-                case RadioMode.Connectable:
-                    AsyncHelpers.RunSync(() => { return _adapter.SetPoweredAsync(true); });
-                    AsyncHelpers.RunSync(() => { return _adapter.SetDiscoverableAsync(false); });
-                    break;
-                case RadioMode.PowerOff:
-                    AsyncHelpers.RunSync(() => { return _adapter.SetPoweredAsync(false); });
-                    break;
-            }
-        }
+        public CompanyIdentifier Manufacturer { get => CompanyIdentifier.Unknown; }
+
+        private bool _isLowEnergy;
+        public BluetoothVersion LmpVersion { get => _isLowEnergy ? BluetoothVersion.Version40: BluetoothVersion.Version10; }
+        public ushort LmpSubversion { get => 0; }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -126,7 +151,10 @@ namespace InTheHand.Net.Bluetooth
             }
         }
 
-
+        public void Dispose()
+        {
+            Dispose(true);
+        }
         #endregion
     }
 }

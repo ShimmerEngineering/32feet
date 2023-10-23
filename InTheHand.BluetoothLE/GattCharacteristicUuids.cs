@@ -1,11 +1,9 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="GattCharacteristicUuids.cs" company="In The Hand Ltd">
-//   Copyright (c) 2015-22 In The Hand Ltd, All rights reserved.
+//   Copyright (c) 2015-23 In The Hand Ltd, All rights reserved.
 //   This source code is licensed under the MIT License - see License.txt
 // </copyright>
 //-----------------------------------------------------------------------
-
-// Based on values from https://www.bluetooth.com/specifications/gatt/characteristics
 
 using System;
 using System.Reflection;
@@ -15,7 +13,7 @@ namespace InTheHand.Bluetooth
     /// <summary>
     /// Provides characteristic UUIDs for common GATT characteristics.
     /// </summary>
-    /// <remarks>To view a list of all Bluetooth SIG-defined characteristic UUIDs, see <a href="https://www.bluetooth.com/specifications/gatt/characteristics">Bluetooth SIG-defined Characteristic UUIDs</a>.</remarks>
+    /// <remarks>To view a list of all Bluetooth SIG-defined characteristic UUIDs, see <see href="https://bitbucket.org/bluetooth-SIG/public/src/main/assigned_numbers/uuids/characteristic_uuids.yaml">Bluetooth SIG-defined Characteristic UUIDs</a>.</remarks>
     [BluetoothUti(Namespace)]
     public static class GattCharacteristicUuids
     {

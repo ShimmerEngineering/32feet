@@ -6,95 +6,96 @@
 // This source code is licensed under the MIT License
 
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Enumeration;
 using Windows.Devices.Radios;
+using Windows.Foundation.Metadata;
 
 namespace InTheHand.Net.Bluetooth
 {
-#if MULTIPLATFORM
     internal class WindowsBluetoothRadio : IBluetoothRadio
-#else
-    partial class BluetoothRadio
-#endif
     {
-        static BluetoothRadio _default;
+        private readonly DeviceInformation _info;
+        private readonly BluetoothAdapter _adapter;
+        private readonly Radio _radio;
 
-        private string _name;
-        private BluetoothAdapter _adapter;
-        private Radio _radio;
-
-        private static BluetoothRadio GetDefault()
+        internal static IBluetoothRadio GetDefault()
         {
-            if (_default == null)
+            IBluetoothRadio defaultRadio = null;
+            var t = Task<BluetoothRadio>.Run(async () =>
             {
-                var t = Task<BluetoothRadio>.Run(async () =>
+                var adapter = await BluetoothAdapter.GetDefaultAsync();
+                if (adapter != null)
                 {
-                    var adapter = await BluetoothAdapter.GetDefaultAsync();
-                    if(adapter != null)
-                    {
-                        var info = await DeviceInformation.CreateFromIdAsync(adapter.DeviceId);
+                    var info = await DeviceInformation.CreateFromIdAsync(adapter.DeviceId);
 
-                        var radio = await adapter.GetRadioAsync();
-                        _default = new BluetoothRadio(info.Name, adapter, radio);
-                    }
-                });
-                t.Wait();
-            }
+                    var radio = await adapter.GetRadioAsync();
+                    defaultRadio = new WindowsBluetoothRadio(info, adapter, radio);
+                }
+            });
+            t.Wait();
 
-            return _default;
+            return defaultRadio;
         }
 
-        private BluetoothRadio(string name, BluetoothAdapter adapter, Radio radio)
+        public void Dispose()
         {
-            _name = name;
+        }
+
+        private WindowsBluetoothRadio(DeviceInformation info, BluetoothAdapter adapter, Radio radio)
+        {
+            _info = info;
             _adapter = adapter;
             _radio = radio;
         }
         
-        string GetName()
-        {
-            return _name;
-        }
+        public string Name { get => _info.Name; }
 
-        BluetoothAddress GetLocalAddress()
-        {
-            return new BluetoothAddress(_adapter.BluetoothAddress);
-        }
+        public BluetoothAddress LocalAddress { get => new BluetoothAddress(_adapter.BluetoothAddress); }
 
-        RadioMode GetMode()
+        public RadioMode Mode
         {
-            return _radio.State == RadioState.On ? RadioMode.Connectable : RadioMode.PowerOff;
-        }
-
-        void SetMode(RadioMode value)
-        {
-            Windows.UI.Core.CoreWindow.GetForCurrentThread().DispatcherQueue.TryEnqueue(async () =>
-                {
-                    if (await Radio.RequestAccessAsync() == RadioAccessStatus.Allowed)
-                    {
-                        await _radio.SetStateAsync(value == RadioMode.PowerOff ? RadioState.Off : RadioState.On);
-                    }
-                });
-        }
-
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        void Dispose(bool disposing)
-        {
-            if (!disposedValue)
+            get
             {
-                if (disposing)
-                {
-                }
-                
-                disposedValue = true;
+                return _radio.State == RadioState.On ? RadioMode.Connectable : RadioMode.PowerOff;
+            }
+            set
+            {
+                Windows.UI.Core.CoreWindow.GetForCurrentThread().DispatcherQueue.TryEnqueue(async () =>
+                    {
+                        if (await Radio.RequestAccessAsync() == RadioAccessStatus.Allowed)
+                        {
+                            await _radio.SetStateAsync(value == RadioMode.PowerOff ? RadioState.Off : RadioState.On);
+                        }
+                    });
             }
         }
 
+        public CompanyIdentifier Manufacturer { get => CompanyIdentifier.Unknown; }
 
-        #endregion
+        public BluetoothVersion LmpVersion
+        {
+            get
+            {
+                if (ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 10))
+                {
+                    if (_adapter.IsExtendedAdvertisingSupported)
+                    {
+                        return BluetoothVersion.Version50;
+                    }
+                }
+
+                if (_adapter.IsLowEnergySupported)
+                {
+                    return BluetoothVersion.Version40;
+                }
+                
+                return BluetoothVersion.Version21;
+            }
+        }
+
+        public ushort LmpSubversion { get => 0; }
     }
 }

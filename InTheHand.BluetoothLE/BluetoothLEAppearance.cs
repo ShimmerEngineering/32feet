@@ -1,6 +1,6 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="BluetoothLEAppearance.cs" company="In The Hand Ltd">
-//   Copyright (c) 2020-22 In The Hand Ltd, All rights reserved.
+//   Copyright (c) 2020-23 In The Hand Ltd, All rights reserved.
 //   This source code is licensed under the MIT License - see License.txt
 // </copyright>
 //-----------------------------------------------------------------------
@@ -10,7 +10,7 @@ namespace InTheHand.Bluetooth
     /// <summary>
     /// Represents the external appearance of a device.
     /// </summary>
-    /// <remarks>Referenced from https://specificationrefs.bluetooth.com/assigned-values/Appearance%20Values.pdf</remarks>
+    /// <remarks>Referenced from <see href="https://bitbucket.org/bluetooth-SIG/public/src/main/assigned_numbers/core/appearance_values.yaml"/></remarks>
     public enum BluetoothLEAppearance : ushort
     {
         Unknown = 0x0000,
@@ -307,6 +307,8 @@ namespace InTheHand.Bluetooth
         PatchInsulinPump = 0x0D44,
         InsulinPen = 0x0D48,
         GenericMedicationDelivery = 0x0D80,
+        GenericSpirometer = 0x0DC0,
+        HandheldSpirometer = 0x0DC1,
         GenericOutdoorSportsActivity = 0x1440,
         LocationDisplay = 0x1441,
         LocationAndNavigationDisplay = 0x1442,

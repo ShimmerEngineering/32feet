@@ -15,39 +15,49 @@ using System.Collections.ObjectModel;
 
 namespace InTheHand.Net.Sockets
 {
-    partial class BluetoothDeviceInfo
+    partial class BluetothDeviceInfo
     {
-        private EAAccessory _accessory;
+        /// <summary>
+        /// On iOS returns the ExternalAccessory Protocol strings for the device.
+        /// </summary>
+        /// <remarks>Protocol names are formatted as reverse-DNS strings. For example, the string “com.apple.myProtocol” might represent a custom protocol defined by Apple.
+        /// Manufacturers can define custom protocols for their accessories or work with other manufacturers and organizations to define standard protocols for different accessory types.</remarks>
+        public IReadOnlyCollection<string> ProtocolStrings
+        {
+            get
+            {
+                return ((ExternalAccessoryBluetoothDeviceInfo)this).ProtocolStrings;
+            }
+        }
+    }
 
-        internal BluetoothDeviceInfo(EAAccessory accessory)
+    internal sealed class ExternalAccessoryBluetoothDeviceInfo : BluetoothDeviceInfo
+    {
+        private readonly EAAccessory _accessory;
+
+        internal ExternalAccessoryBluetoothDeviceInfo(EAAccessory accessory)
         {
             _accessory = accessory;
         }
 
-        public static implicit operator EAAccessory(BluetoothDeviceInfo deviceInfo)
+        public static implicit operator EAAccessory(ExternalAccessoryBluetoothDeviceInfo deviceInfo)
         {
             return deviceInfo._accessory;
         }
 
-        public static implicit operator BluetoothDeviceInfo(EAAccessory accessory)
+        public static implicit operator ExternalAccessoryBluetoothDeviceInfo(EAAccessory accessory)
         {
-            return new BluetoothDeviceInfo(accessory);
+            return new ExternalAccessoryBluetoothDeviceInfo(accessory);
         }
 
-        BluetoothAddress GetDeviceAddress()
+        public static explicit operator ExternalAccessoryBluetoothDeviceInfo(BluetothDeviceInfo v)
         {
-            return new BluetoothAddress(_accessory);
+            return (ExternalAccessoryBluetoothDeviceInfo)v;
         }
 
-        string GetDeviceName()
-        {
-            return _accessory.Name;
-        }
+        public override BluetoothAddress DeviceAddress { get => new BluetoothAddress(_accessory); }
 
-        ClassOfDevice GetClassOfDevice()
-        {
-            return (ClassOfDevice)0;
-        }
+        public override string DeviceName {  get => _accessory.Name; }
 
         /// <summary>
         /// On iOS returns the ExternalAccessory Protocol strings for the device.
@@ -62,33 +72,9 @@ namespace InTheHand.Net.Sockets
             }
         }
 
-        async Task<IEnumerable<Guid>> PlatformGetRfcommServicesAsync(bool cached)
-        {
-            throw new PlatformNotSupportedException();
-        }
 
-        IReadOnlyCollection<Guid> GetInstalledServices()
-        {
-            return new List<Guid>().AsReadOnly();
-        }
+        public override bool Connected {  get =>  _accessory.Connected; }
 
-        void PlatformSetServiceState(Guid service, bool state)
-        {
-            throw new PlatformNotSupportedException();
-        }
-
-        bool GetConnected()
-        {
-            return _accessory.Connected;
-        }
-
-        bool GetAuthenticated()
-        {
-            return true;
-        }
-
-        void PlatformRefresh()
-        {
-        }
+        public override bool Authenticated { get => true; }
     }
 }

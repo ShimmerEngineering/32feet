@@ -1,11 +1,9 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="GattServiceUuids.cs" company="In The Hand Ltd">
-//   Copyright (c) 2015-22 In The Hand Ltd, All rights reserved.
+//   Copyright (c) 2015-23 In The Hand Ltd, All rights reserved.
 //   This source code is licensed under the MIT License - see License.txt
 // </copyright>
 //-----------------------------------------------------------------------
-
-// Based on values from https://www.bluetooth.com/specifications/gatt/services
 
 using System.Reflection;
 
@@ -14,7 +12,7 @@ namespace InTheHand.Bluetooth
     /// <summary>
     /// Provides service UUIDs for common GATT services.
     /// </summary>
-    /// <remarks>To view a list of all Bluetooth SIG-defined service UUIDs, see <a href="https://www.bluetooth.com/specifications/gatt/services">Bluetooth SIG-defined Service UUIDs</a>.</remarks>
+    /// <remarks>To view a list of all Bluetooth SIG-defined service UUIDs, see <see href="https://bitbucket.org/bluetooth-SIG/public/src/main/assigned_numbers/uuids/service_uuids.yaml">Bluetooth SIG-defined Service UUIDs</a>.</remarks>
     [BluetoothUti(Namespace)]
     public static class GattServiceUuids
     {
@@ -203,6 +201,12 @@ namespace InTheHand.Bluetooth
         public static readonly BluetoothUuid DeviceTime = 0x1847;
 
         /// <summary>
+        /// Gets the Bluetooth SIG-defined Electronic Shelf Label service UUID.
+        /// </summary>
+        [BluetoothUti("electronic_shelf_label")]
+        public static readonly BluetoothUuid ElectronicShelfLabel = 0x1857;
+        
+        /// <summary>
         /// Gets the Bluetooth SIG-defined Environmental Sensing service UUID.
         /// </summary>
         [BluetoothUti("environmental_sensing")]
@@ -232,6 +236,12 @@ namespace InTheHand.Bluetooth
         [BluetoothUti("health_thermometer")]
         public static readonly BluetoothUuid HealthThermometer = 0x1809;
 
+        /// <summary>
+        /// Gets the Bluetooth SIG-defined Hearing Access service UUID.
+        /// </summary>
+        [BluetoothUti("hearing_access")]
+        public static readonly BluetoothUuid HearingAccess = 0x1854;
+        
         /// <summary>
         /// Gets the Bluetooth SIG-defined Heart Rate Service UUID.
         /// </summary>
@@ -299,6 +309,12 @@ namespace InTheHand.Bluetooth
         public static readonly BluetoothUuid MeshProxy = 0x1828;
 
         /// <summary>
+        /// Gets the Bluetooth SIG-defined Mesh Proxy Solicitation service UUID.
+        /// </summary>
+        [BluetoothUti("mesh_proxy_solicitation")]
+        public static readonly BluetoothUuid MeshProxySolicitation = 0x1859;
+
+        /// <summary>
         /// Gets the Bluetooth SIG-defined Next DST Change service UUID.
         /// </summary>
         [BluetoothUti("next_dst_change")]
@@ -323,6 +339,12 @@ namespace InTheHand.Bluetooth
         public static readonly BluetoothUuid PulseOximeter = 0x1822;
 
         /// <summary>
+        /// Gets the Bluetooth SIG-defined Public Broadcast Announcement service UUID.
+        /// </summary>
+        [BluetoothUti("public_broadcast_announcement")]
+        public static readonly BluetoothUuid PublicBroadcastAnnouncement = 0x1856;
+
+        /// <summary>
         /// Gets the Bluetooth SIG-defined Reconnection Configuration service UUID.
         /// </summary>
         [BluetoothUti("reconnection_configuration")]
@@ -345,6 +367,12 @@ namespace InTheHand.Bluetooth
         /// </summary>
         [BluetoothUti("scan_parameters")]
         public static readonly BluetoothUuid ScanParameters = 0x1813;
+
+        /// <summary>
+        /// Gets the Bluetooth SIG-defined Telephony and Media Audio service UUID.
+        /// </summary>
+        [BluetoothUti("telephony_and_media_audio")]
+        public static readonly BluetoothUuid TelephonyAndMediaAudio = 0x1855;
 
         /// <summary>
         /// Gets the Bluetooth SIG-defined Transport Discovery service UUID.

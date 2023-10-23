@@ -12,6 +12,9 @@ using System.Runtime.InteropServices;
 
 namespace InTheHand.Net.Sockets
 {
+    /// <summary>
+    /// Wraps the native Win32 Sockets APIs to allow Bluetooth sockets to be used under Mono.
+    /// </summary>
     public class Win32Socket : Socket
     {
         private int _socket = 0;
@@ -21,7 +24,7 @@ namespace InTheHand.Net.Sockets
         public Win32Socket() : base(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Unspecified)
         {
             // AF_BT, Type_Stream, Protocol_Rfcomm
-            _socket = NativeMethods.socket(BluetoothClient.AddressFamilyBluetooth, SocketType.Stream, BluetoothProtocolType.RFComm);
+            _socket = NativeMethods.socket(Win32BluetoothClient.AddressFamilyBluetooth, SocketType.Stream, BluetoothProtocolType.RFComm);
         }
 
         internal Win32Socket(int socket) : base(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Unspecified)
